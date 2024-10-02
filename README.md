@@ -34,3 +34,8 @@ npm run dev
 - **Express**
 - **TypeScript**
 - **PostHog**
+
+## TODOs
+- complete session information (start, end)
+- handling pageleave -events
+- feature flag fetching
