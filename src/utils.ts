@@ -1,4 +1,5 @@
 import { isNull, isObject, isUndefined, transform } from 'lodash';
+import { v7 as uuidv7 } from 'uuid';
 
 const removeUndefinedValues = <T extends object>(obj: T): T =>
 	transform(obj, (r, v, k) => {
@@ -11,12 +12,14 @@ export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
     projectId: string | undefined,
     userId: string | undefined,
     anonymousId: string,
+    sessionId: string,
 } => {
     return {
         organizationId: cookies.organizationId,
         projectId: cookies.projectId,
         userId: cookies.userId,
-        anonymousId: cookies.anonymousId ?? `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        anonymousId: cookies.anonymousId ?? uuidv7(),
+        sessionId: cookies.sessionId ?? uuidv7(),
     }
 }
 

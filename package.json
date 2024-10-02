@@ -21,11 +21,13 @@
     "lodash": "^4.17.21",
     "posthog-node": "^4.2.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/lodash": "^4.17.9",
+    "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.7"
   }
 }

@@ -3,6 +3,7 @@ import { PostHog } from 'posthog-node';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 import { getIdsFromCookies, getVisitInfo } from './utils';
 
 // Load environment variables from .env file
@@ -73,7 +74,7 @@ app.post('/telemetry/identify', (req, res) => {
 
 app.post('/telemetry/event', (req, res) => {
   const {action, ...rest } = req.body;
-  const { organizationId, projectId, userId, anonymousId } = getIdsFromCookies(req.cookies);
+  const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
@@ -82,12 +83,13 @@ app.post('/telemetry/event', (req, res) => {
         ...rest,
         $current_url: rest.page_title,
         $process_person_profile: !!userId,
+        $session_id: sessionId,
     },
     sendFeatureFlags: true,
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
 
-
+  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
   res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
   res.status(200).send('Event tracked');
 });
@@ -95,7 +97,7 @@ app.post('/telemetry/event', (req, res) => {
 app.post('/telemetry/page', (req, res)=> {
   const event = req.body;
 
-  const { organizationId, projectId, userId, anonymousId } = getIdsFromCookies(req.cookies);
+  const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
   const properties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search});
 
@@ -106,11 +108,14 @@ app.post('/telemetry/page', (req, res)=> {
         ...properties,
         screen_resolution: event.ga.screen_resolution,
         $current_url: event.current_url,
-        $path: event.route,
+        $pathname: event.route,
         $process_person_profile: !!userId,
+        $session_id: sessionId,
     },
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
+
+  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
   res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
   res.status(200).send('Page view tracked');
 })
