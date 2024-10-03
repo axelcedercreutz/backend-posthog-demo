@@ -52,7 +52,8 @@ const getBrowserInfo = (userAgent: string) => {
 const getDeviceAndOS = (userAgent: string) => {
     let deviceType:string | undefined;
     let os:string | undefined;
-    // Device type detection
+    let osVersion:string | undefined;
+    
     if (/mobile/i.test(userAgent)) {
         deviceType = "Mobile";
     } else if (/tablet/i.test(userAgent)) {
@@ -61,20 +62,24 @@ const getDeviceAndOS = (userAgent: string) => {
         deviceType = "Desktop";
     }
 
-    // OS detection
+    
     if (userAgent.includes("Win")) {
         os = "Windows";
+        osVersion = userAgent.match(/Windows NT (\d+\.\d+)/)?.[1];
     } else if (userAgent.includes("Mac")) {
         os = "MacOS";
+        osVersion = userAgent.match(/Mac OS X (\d+_\d+)/)?.[1];
     } else if (userAgent.includes("Linux")) {
         os = "Linux";
     } else if (userAgent.includes("Android")) {
         os = "Android";
+        os = userAgent.match(/Android (\d+\.\d+)/)?.[1];
     } else if (userAgent.includes("iOS") || userAgent.includes("iPhone") || userAgent.includes("iPad")) {
         os = "iOS";
+        os = userAgent.match(/OS (\d+_\d+)/)?.[1];
     }
 
-    return { deviceType, os };
+    return { deviceType, os, osVersion };
 }
 
 const getUTMTags = (search: string) => {
@@ -101,12 +106,14 @@ export const getVisitInfo = ({userAgent, search, referrer}: {userAgent: string, 
     const utmTags = getUTMTags(search);
 
     return removeUndefinedValues({
+        $raw_user_agent: userAgent,
         $browser: browserInfo.browser,
         $browser_version: browserInfo.version,
         $referrer: referrerInfo.referrer,
         $referring_domain: referrerInfo.referringDomain,
         $device_type: deviceInfo.deviceType,
         $os: deviceInfo.os,
+        $os_version: deviceInfo.osVersion,
         ...utmTags,
     });
 }

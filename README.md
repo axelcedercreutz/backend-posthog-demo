@@ -36,6 +36,5 @@ npm run dev
 - **PostHog**
 
 ## TODOs
-- complete session information (start, end)
-- handling pageleave -events
+- complete session information (last external url click still missing)
 - feature flag fetching

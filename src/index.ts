@@ -36,14 +36,12 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.post('/telemetry/identify', (req, res) => {
-    const { user } = req.body;
-
-    const distinctId = user.id;
+    const { user: { id: distinctId, organizations } } = req.body;
 
     posthog.identify({
         distinctId,
     });
-    res.cookie('userId', distinctId, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
+    res.cookie('userId', distinctId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
     
     const anonymousId = req.cookies.anonymousId;
     if(!!anonymousId)
@@ -52,72 +50,119 @@ app.post('/telemetry/identify', (req, res) => {
         alias: anonymousId,
     })
 
-    const firstUserOrganization = user.organizations[0];
+    const firstUserOrganization = organizations[0];
     if(!!firstUserOrganization){
       posthog.groupIdentify({
         distinctId,
         groupType: 'organization',
         groupKey: firstUserOrganization.id,
       })
-      res.cookie('organizationId', firstUserOrganization.id, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
+      res.cookie('organizationId', firstUserOrganization.id, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
     }
+
     if(!!firstUserOrganization?.projects.length){
       posthog.groupIdentify({
         distinctId,
         groupType: 'project',
         groupKey: firstUserOrganization.projects[0].id,
       })
-      res.cookie('projectId', firstUserOrganization.projects[0].id, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
+      res.cookie('projectId', firstUserOrganization.projects[0].id, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
     }
+
     res.status(200).send('Identified');
 })
 
 app.post('/telemetry/event', (req, res) => {
-  const {action, ...rest } = req.body;
+  const {action, category, label, value, ga, current_url, page_location, page_title, page_referrer: referrer } = req.body;
+
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
+
+  const visitProperties = getVisitInfo({userAgent: ga.user_agent, referrer, search: ga.search});
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
     event: action,
     properties: {
-        ...rest,
-        $current_url: rest.page_title,
         $process_person_profile: !!userId,
+        $current_url: current_url,
+        $pathname: page_location,
         $session_id: sessionId,
+        page_title,
+        category,
+        label,
+        value,
+        ...visitProperties
     },
     sendFeatureFlags: true,
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
 
   res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
-  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
+  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
   res.status(200).send('Event tracked');
 });
 
 app.post('/telemetry/page', (req, res)=> {
   const event = req.body;
 
+  const hasActiveSession = !!req.cookies.sessionId;
+
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
-  const properties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search});
+  const visitProperties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search});
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
     event: '$pageview',
     properties: {
-        ...properties,
+        ...visitProperties,
         screen_resolution: event.ga.screen_resolution,
+        $locale: event.ga.language,
         $current_url: event.current_url,
         $pathname: event.route,
+        $process_person_profile: !!userId,
+        $session_id: sessionId,
+        ...(!hasActiveSession && {
+          $entry_current_url: event.current_url,
+          $entry_pathname: event.route,
+          $entry_utm_source: visitProperties.utm_source,
+          $entry_utm_medium: visitProperties.utm_medium,
+          $entry_utm_campaign: visitProperties.utm_campaign,
+          $entry_utm_term: visitProperties.utm_term,
+          $entry_utm_content: visitProperties.utm_content,
+          $entry_referrer: visitProperties.$referrer,
+          $entry_referring_domain: visitProperties.$referring_domain,
+        })
+    },
+    ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}}),
+    sendFeatureFlags: true
+  });
+
+  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
+  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+  res.status(200).send('Page view tracked');
+})
+
+app.post('/telemetry/pageleave', (req, res) => {
+  const event = req.body;
+  const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
+
+  posthog.capture({
+    distinctId: userId ?? anonymousId,
+    event: '$pageleave',
+    properties: {
+        $current_url: event.current_url,
+        $pathname: event.route,
+        $exit_current_url: event.current_url,
+        $exit_pathname: event.route,
         $process_person_profile: !!userId,
         $session_id: sessionId,
     },
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
 
-  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
-  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 180, sameSite: 'lax' });
-  res.status(200).send('Page view tracked');
+  res.clearCookie('sessionId');
+  res.status(200).send('Page leave tracked');
 })
 
 const server = app.listen(port, () => {
