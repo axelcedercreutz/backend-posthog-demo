@@ -12,6 +12,9 @@ dotenv.config();
 const app = express();
 const port = 3231;
 
+const YEAR_IN_MS = 3600000 * 24 * 365;
+const THIRTY_MIN_IN_MS = 3600000 / 2;
+
 const posthog = new PostHog(process.env.PH_API_KEY ?? '', {
   host: process.env.PH_HOST,
 });
@@ -41,7 +44,7 @@ app.post('/telemetry/identify', (req, res) => {
     posthog.identify({
         distinctId,
     });
-    res.cookie('userId', distinctId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+    res.cookie('userId', distinctId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     
     const anonymousId = req.cookies.anonymousId;
     if(!!anonymousId)
@@ -57,7 +60,7 @@ app.post('/telemetry/identify', (req, res) => {
         groupType: 'organization',
         groupKey: firstUserOrganization.id,
       })
-      res.cookie('organizationId', firstUserOrganization.id, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+      res.cookie('organizationId', firstUserOrganization.id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
     if(!!firstUserOrganization?.projects.length){
@@ -66,7 +69,7 @@ app.post('/telemetry/identify', (req, res) => {
         groupType: 'project',
         groupKey: firstUserOrganization.projects[0].id,
       })
-      res.cookie('projectId', firstUserOrganization.projects[0].id, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+      res.cookie('projectId', firstUserOrganization.projects[0].id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
     res.status(200).send('Identified');
@@ -97,8 +100,8 @@ app.post('/telemetry/event', (req, res) => {
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
 
-  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
-  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
+  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   res.status(200).send('Event tracked');
 });
 
@@ -138,8 +141,8 @@ app.post('/telemetry/page', (req, res)=> {
     sendFeatureFlags: true
   });
 
-  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: 3600000 / 2, sameSite: 'lax' });
-  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: 3600000 * 24 * 365, sameSite: 'lax' });
+  res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
+  res.cookie('anonymousId', anonymousId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   res.status(200).send('Page view tracked');
 })
 
