@@ -161,7 +161,6 @@ app.post('/telemetry/pageleave', (req, res) => {
     ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
   });
 
-  res.clearCookie('sessionId');
   res.status(200).send('Page leave tracked');
 })
 
