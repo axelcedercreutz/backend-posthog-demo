@@ -54,6 +54,10 @@ app.post('/telemetry/identify', (req, res) => {
         alias: anonymousId,
     })
 
+    /**
+     * Note! This is a simplified example. In a real-world scenario, you would want to handle the case where the user is part of multiple organizations and projects.
+     * Similar case should've been handled earlier for Mixpanel.
+     */
     const firstUserOrganization = organizations[0];
     if(!!firstUserOrganization){
       posthog.groupIdentify({
