@@ -41,5 +41,5 @@ npm run dev
 - **PostHog**
 
 ## TODOs
-- complete session information (last external url click and location still missing)
+- complete session information (last external url click)
 - feature flag fetching
