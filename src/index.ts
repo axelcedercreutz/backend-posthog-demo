@@ -17,6 +17,7 @@ const THIRTY_MIN_IN_MS = 3600000 / 2;
 
 const posthog = new PostHog(process.env.PH_API_KEY ?? '', {
   host: process.env.PH_HOST,
+  disableGeoip: false // Events that are generated on the server-side must override this to true.
 });
 
 posthog.debug()
@@ -77,10 +78,10 @@ app.post('/telemetry/identify', (req, res) => {
 
 app.post('/telemetry/event', (req, res) => {
   const {action, category, label, value, ga, current_url, page_location, page_title, page_referrer: referrer } = req.body;
+  const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
-
-  const visitProperties = getVisitInfo({userAgent: ga.user_agent, referrer, search: ga.search});
+  const visitProperties = getVisitInfo({ userAgent: ga.userAgent, referrer, search: ga.search });
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
@@ -88,8 +89,10 @@ app.post('/telemetry/event', (req, res) => {
     properties: {
         $process_person_profile: !!userId,
         $current_url: current_url,
+        $host: new URL(current_url).hostname,
         $pathname: page_location,
         $session_id: sessionId,
+        $ip,
         page_title,
         category,
         label,
@@ -109,13 +112,14 @@ app.post('/telemetry/event', (req, res) => {
 
 app.post('/telemetry/page', (req, res)=> {
   const event = req.body;
+  const $ip = (req.headers.host === 'localhost' || '127.0.0.1') ? undefined : req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
 
   const hasActiveSession = !!req.cookies.sessionId;
   const isInitialSession = !hasActiveSession && !req.cookies.anonymousId && !req.cookies.userId;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
-  const visitProperties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search}, { isInitialSession });
+  const visitProperties = getVisitInfo({userAgent: event.ga.userAgent, referrer: event.referrer, search: event.ga.search}, { isInitialSession });
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
@@ -125,9 +129,11 @@ app.post('/telemetry/page', (req, res)=> {
         screen_resolution: event.ga.screen_resolution,
         $locale: event.ga.language,
         $current_url: event.current_url,
+        $host: new URL(event.current_url).hostname,
         $pathname: event.route,
         $process_person_profile: !!userId,
         $session_id: sessionId,
+        $ip,
         ...(!hasActiveSession && {
           $entry_current_url: event.current_url,
           $entry_pathname: event.route,
@@ -153,6 +159,7 @@ app.post('/telemetry/page', (req, res)=> {
 
 app.post('/telemetry/pageleave', (req, res) => {
   const event = req.body;
+  const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
   posthog.capture({
@@ -160,11 +167,13 @@ app.post('/telemetry/pageleave', (req, res) => {
     event: '$pageleave',
     properties: {
         $current_url: event.current_url,
+        $host: new URL(event.current_url).hostname,
         $pathname: event.route,
         $exit_current_url: event.current_url,
         $exit_pathname: event.route,
         $process_person_profile: !!userId,
         $session_id: sessionId,
+        $ip,
     },
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}

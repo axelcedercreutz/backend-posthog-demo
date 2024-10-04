@@ -91,11 +91,11 @@ const getUTMTags = (search: string, isInitialSession?: boolean) => {
         utm_term: urlParams.get('utm_term'),
         utm_content: urlParams.get('utm_content'),
         ...(!!isInitialSession && {
-            $initial_utm_source: urlParams.get('utm_source'),
-            $initial_utm_medium: urlParams.get('utm_medium'),
-            $initial_utm_campaign: urlParams.get('utm_campaign'),
-            $initial_utm_term: urlParams.get('utm_term'),
-            $initial_utm_content: urlParams.get('utm_content'),
+            $initial_utm_source: urlParams.get('utm_source') ?? 'organic',
+            $initial_utm_medium: urlParams.get('utm_medium') ?? 'organic',
+            $initial_utm_campaign: urlParams.get('utm_campaign') ?? 'organic',
+            $initial_utm_term: urlParams.get('utm_term') ?? 'organic',
+            $initial_utm_content: urlParams.get('utm_content') ?? 'organic',
         })
     };
     return utmTags;
