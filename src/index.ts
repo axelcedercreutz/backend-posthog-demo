@@ -56,7 +56,7 @@ app.post('/telemetry/identify', (req, res) => {
 
     /**
      * Note! This is a simplified example. In a real-world scenario, you would want to handle the case where the user is part of multiple organizations and projects.
-     * Similar case should've been handled earlier for Mixpanel.
+     * To my understanding, this has been solved earlier as well.
      */
     const firstUserOrganization = organizations[0];
     if(!!firstUserOrganization){
