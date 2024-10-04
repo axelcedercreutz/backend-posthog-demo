@@ -19,7 +19,7 @@ export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
         projectId: cookies.projectId,
         userId: cookies.userId,
         anonymousId: cookies.anonymousId ?? uuidv7(),
-        sessionId: cookies.sessionId ?? uuidv7(),
+        sessionId: cookies.sessionId ?? uuidv7(), // For PostHog to recognize this as a session ID it has to be a UUIDv7. See https://posthog.com/docs/data/sessions#custom-session-ids
     }
 }
 
