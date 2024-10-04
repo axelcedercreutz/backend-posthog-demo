@@ -139,10 +139,10 @@ app.post('/telemetry/event', (req, res) => {
         value,
         ...visitProperties
     },
-    sendFeatureFlags: true,
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}
-    })
+    }),
+    sendFeatureFlags: true, // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });
 
   res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
@@ -159,8 +159,15 @@ app.post('/telemetry/page', (req, res)=> {
   const event = req.body;
   const $ip = (req.headers.host === 'localhost' || '127.0.0.1') ? undefined : req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
 
+  /**
+   * We need to check if this is the initial (i.e. first ever) session for the user. If it is, we need to set additional initial user properties.
+   */
+  const isInitialSession = !req.cookies.sessionId && !req.cookies.anonymousId && !req.cookies.userId;
+
+  /**
+   * We need to check if the user has an active session. If not, we need to generate a new session ID and set the entry properties.
+   */
   const hasActiveSession = !!req.cookies.sessionId;
-  const isInitialSession = !hasActiveSession && !req.cookies.anonymousId && !req.cookies.userId;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
@@ -194,7 +201,7 @@ app.post('/telemetry/page', (req, res)=> {
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}
     }),
-    sendFeatureFlags: true
+    sendFeatureFlags: true // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });
 
   res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
@@ -227,7 +234,8 @@ app.post('/telemetry/pageleave', (req, res) => {
     },
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}
-    })
+    }),
+    sendFeatureFlags: true, // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });
 
   res.status(200).send('Page leave tracked');
