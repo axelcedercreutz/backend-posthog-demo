@@ -97,7 +97,9 @@ app.post('/telemetry/event', (req, res) => {
         ...visitProperties
     },
     sendFeatureFlags: true,
-    ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
+    ...(!!organizationId && {
+      groups: { organization: organizationId, ...!!projectId && { project: projectId }}
+    })
   });
 
   res.cookie('sessionId', sessionId, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
@@ -109,10 +111,11 @@ app.post('/telemetry/page', (req, res)=> {
   const event = req.body;
 
   const hasActiveSession = !!req.cookies.sessionId;
+  const isInitialSession = !hasActiveSession && !req.cookies.anonymousId && !req.cookies.userId;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
-  const visitProperties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search});
+  const visitProperties = getVisitInfo({userAgent: event.ga.user_agent, referrer: event.referrer, search: event.ga.search}, { isInitialSession });
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
@@ -137,7 +140,9 @@ app.post('/telemetry/page', (req, res)=> {
           $entry_referring_domain: visitProperties.$referring_domain,
         })
     },
-    ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}}),
+    ...(!!organizationId && {
+      groups: { organization: organizationId, ...!!projectId && { project: projectId }}
+    }),
     sendFeatureFlags: true
   });
 
@@ -161,7 +166,9 @@ app.post('/telemetry/pageleave', (req, res) => {
         $process_person_profile: !!userId,
         $session_id: sessionId,
     },
-    ...(!!organizationId && {groups: { organization: organizationId, ...!!projectId && { project: projectId }}})
+    ...(!!organizationId && {
+      groups: { organization: organizationId, ...!!projectId && { project: projectId }}
+    })
   });
 
   res.status(200).send('Page leave tracked');

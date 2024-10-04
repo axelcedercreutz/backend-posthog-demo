@@ -1,7 +1,7 @@
 # POC of backend enpoints for backend-only implementation of Posthog
 
-This repository is a POC for setting up an backend-only implementation of PostHog for analytics.
-The implementation utilizes HTTP-only Cookies to store the user ID, organization ID & project ID to be stored over sessions.
+This repository is a POC for setting up an backend-only implementation of PostHog for website and product analytics.
+The implementation utilizes HTTP-only Cookies to store the user ID, organization ID & project ID to be stored over sessions and sent from the server to the client and back with the requests & responses.
 
 ## Getting Started
 
@@ -22,6 +22,11 @@ The implementation utilizes HTTP-only Cookies to store the user ID, organization
     ```sh
     npm install
     ```
+3. Copy the .env.example to a .env file:
+    ```sh
+    cp .env.example .env
+
+4. Replace placeholders from .env to your PostHog api key & host.
 
 ### Running the Server
 
@@ -36,5 +41,5 @@ npm run dev
 - **PostHog**
 
 ## TODOs
-- complete session information (last external url click still missing)
+- complete session information (last external url click and location still missing)
 - feature flag fetching

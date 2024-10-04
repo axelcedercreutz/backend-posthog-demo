@@ -82,7 +82,7 @@ const getDeviceAndOS = (userAgent: string) => {
     return { deviceType, os, osVersion };
 }
 
-const getUTMTags = (search: string) => {
+const getUTMTags = (search: string, isInitialSession?: boolean) => {
     const urlParams = new URLSearchParams(search);
     const utmTags = {
         utm_source: urlParams.get('utm_source'),
@@ -90,6 +90,13 @@ const getUTMTags = (search: string) => {
         utm_campaign: urlParams.get('utm_campaign'),
         utm_term: urlParams.get('utm_term'),
         utm_content: urlParams.get('utm_content'),
+        ...(!!isInitialSession && {
+            $initial_utm_source: urlParams.get('utm_source'),
+            $initial_utm_medium: urlParams.get('utm_medium'),
+            $initial_utm_campaign: urlParams.get('utm_campaign'),
+            $initial_utm_term: urlParams.get('utm_term'),
+            $initial_utm_content: urlParams.get('utm_content'),
+        })
     };
     return utmTags;
 }
@@ -99,11 +106,11 @@ const getReferrerInfo = (referrer: string) => {
     return { referrer: !!referrer ? referrer : undefined, referringDomain };
 }
 
-export const getVisitInfo = ({userAgent, search, referrer}: {userAgent: string, search: string, referrer: string}) => {
+export const getVisitInfo = ({userAgent, search, referrer}: {userAgent: string, search: string, referrer: string}, opts?: {isInitialSession: boolean}) => {
     const browserInfo = getBrowserInfo(userAgent);
     const referrerInfo = getReferrerInfo(referrer);
     const deviceInfo = getDeviceAndOS(userAgent);
-    const utmTags = getUTMTags(search);
+    const utmTags = getUTMTags(search, opts?.isInitialSession);
 
     return removeUndefinedValues({
         $raw_user_agent: userAgent,
