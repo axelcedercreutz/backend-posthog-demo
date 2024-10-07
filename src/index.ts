@@ -121,7 +121,7 @@ app.post('/telemetry/groups/reset', (req, res) => {
 })
 
 app.post('/telemetry/event', (req, res) => {
-  const {action, category, label, value, ga, current_url, page_location, page_title, page_referrer: referrer } = req.body;
+  const {action, category, label, value, ga, current_url, page_location, page_title, page_referrer: referrer, ...rest } = req.body;
   const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
@@ -141,7 +141,8 @@ app.post('/telemetry/event', (req, res) => {
         category,
         label,
         value,
-        ...visitProperties
+        ...visitProperties,
+        ...rest
     },
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}
