@@ -40,41 +40,35 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.post('/telemetry/identify', (req, res) => {
-    const { user: { id: distinctId, organizations } } = req.body;
+    const { userId, organizationId, projectId } = req.body;
 
     posthog.identify({
-        distinctId,
+        distinctId: userId,
     });
-    res.cookie('userId', distinctId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+    res.cookie('userId', userId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     
     const anonymousId = req.cookies.anonymousId;
     if(!!anonymousId)
     posthog.alias({
-        distinctId,
+        distinctId: userId,
         alias: anonymousId,
     })
-
-    /**
-     * Note! This is a simplified example. In a real-world scenario, you would want to handle the case where the user is part of multiple organizations and projects.
-     * To my understanding, this has been solved earlier as well.
-     */
-    const firstUserOrganization = organizations[0];
-    if(!!firstUserOrganization){
+    if(!!organizationId){
       posthog.groupIdentify({
-        distinctId,
+        distinctId: userId,
         groupType: 'organization',
-        groupKey: firstUserOrganization.id,
+        groupKey: organizationId,
       })
-      res.cookie('organizationId', firstUserOrganization.id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+      res.cookie('organizationId', organizationId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
-    if(!!firstUserOrganization?.projects.length){
+    if(!!projectId){
       posthog.groupIdentify({
-        distinctId,
+        distinctId: userId,
         groupType: 'project',
-        groupKey: firstUserOrganization.projects[0].id,
+        groupKey: projectId,
       })
-      res.cookie('projectId', firstUserOrganization.projects[0].id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+      res.cookie('projectId', projectId, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
     res.status(200).send('Identified');
@@ -121,28 +115,26 @@ app.post('/telemetry/groups/reset', (req, res) => {
 })
 
 app.post('/telemetry/event', (req, res) => {
-  const {action, category, label, value, ga, current_url, page_location, page_title, page_referrer: referrer, ...rest } = req.body;
+  const { action, pageUrl, pageTitle, pathname, ph, customProperties } = req.body;
   const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
-  const visitProperties = getVisitInfo({ userAgent: ga.userAgent, referrer, search: ga.search });
+  const visitProperties = getVisitInfo({ userAgent: ph.userAgent, referrer: ph.referrer, search: ph.search });
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
     event: action,
     properties: {
-        $process_person_profile: !!userId,
-        $current_url: current_url,
-        $host: new URL(current_url).hostname,
-        $pathname: page_location,
-        $session_id: sessionId,
         $ip,
-        page_title,
-        category,
-        label,
-        value,
+        page_title: pageTitle,
+        $pathname: pathname,
+        $current_url: pageUrl,
+        $host: new URL(pageUrl).hostname,
+        $process_person_profile: !!userId,
+        $session_id: sessionId,
+        $locale: ph.language,
         ...visitProperties,
-        ...rest
+        ...customProperties
     },
     ...(!!organizationId && {
       groups: { organization: organizationId, ...!!projectId && { project: projectId }}
@@ -161,7 +153,7 @@ app.post('/telemetry/event', (req, res) => {
 });
 
 app.post('/telemetry/page', (req, res)=> {
-  const event = req.body;
+  const { pageUrl, pageTitle, pathname, ph } = req.body;
   const $ip = (req.headers.host === 'localhost' || '127.0.0.1') ? undefined : req.headers['x-forwarded-for'] ?? req.socket.remoteAddress;
 
   /**
@@ -176,24 +168,24 @@ app.post('/telemetry/page', (req, res)=> {
 
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
-  const visitProperties = getVisitInfo({userAgent: event.ga.userAgent, referrer: event.referrer, search: event.ga.search}, { isInitialSession });
+  const visitProperties = getVisitInfo({userAgent: ph.user_agent, referrer: ph.referrer, search: ph.search}, { isInitialSession });
 
   posthog.capture({
     distinctId: userId ?? anonymousId,
     event: '$pageview',
     properties: {
-        ...visitProperties,
-        screen_resolution: event.ga.screen_resolution,
-        $locale: event.ga.language,
-        $current_url: event.current_url,
-        $host: new URL(event.current_url).hostname,
-        $pathname: event.route,
+        $ip,
+        page_title: pageTitle,
+        $pathname: pathname,
+        $current_url: pageUrl,
+        $host: new URL(pageUrl).hostname,
         $process_person_profile: !!userId,
         $session_id: sessionId,
-        $ip,
+        $locale: ph.language,
+        ...visitProperties,
         ...(!hasActiveSession && {
-          $entry_current_url: event.current_url,
-          $entry_pathname: event.route,
+          $entry_current_url: pageUrl,
+          $entry_pathname: pathname,
           $entry_utm_source: visitProperties.utm_source,
           $entry_utm_medium: visitProperties.utm_medium,
           $entry_utm_campaign: visitProperties.utm_campaign,
