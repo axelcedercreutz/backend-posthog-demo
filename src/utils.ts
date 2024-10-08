@@ -59,7 +59,6 @@ export const getIdsFromCookies = (cookies: { [key: string]: string }): {
 const getBrowserInfo = (userAgent: string) => {
     let browser: string | undefined;
     let version: string | undefined;
-    console.log('userAgent', userAgent)
     if (userAgent.includes("Chrome")) {
         browser = "Chrome";
         version = userAgent.match(/Chrome\/(\d+)/)?.[1];
@@ -214,7 +213,6 @@ const getReferrerInfo = (referrer: string) => {
  */
 export const getVisitInfo = (ph: { user_agent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number }, opts?: { isInitialSession: boolean }) => {
     const { user_agent, search, referrer } = ph;
-    console.log('ph', ph)
     const browserInfo = getBrowserInfo(user_agent);
     const referrerInfo = getReferrerInfo(referrer);
     const deviceInfo = getDeviceAndOS(user_agent);
