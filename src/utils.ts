@@ -23,18 +23,18 @@ const removeUndefinedValues = <T extends object>(obj: T): T =>
  * {@link https://posthog.com/docs/data/sessions#custom-session-ids | PostHog Documentation}
  */
 export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
-    organizationId: string | undefined,
-    projectId: string | undefined,
-    userId: string | undefined,
-    anonymousId: string,
-    sessionId: string,
+    organization_id: string | undefined,
+    project_id: string | undefined,
+    user_id: string | undefined,
+    anonymous_id: string,
+    session_id: string,
 } => {
     return {
-        organizationId: cookies.organizationId,
-        projectId: cookies.projectId,
-        userId: cookies.userId,
-        anonymousId: cookies.anonymousId ?? uuidv7(),
-        sessionId: cookies.sessionId ?? uuidv7(),
+        organization_id: cookies.organizationId,
+        project_id: cookies.projectId,
+        user_id: cookies.userId,
+        anonymous_id: cookies.anonymousId ?? uuidv7(),
+        session_id: cookies.sessionId ?? uuidv7(),
     }
 }
 
