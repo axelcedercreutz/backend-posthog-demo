@@ -40,7 +40,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.post('/telemetry/identify', (req, res) => {
-    const { user_id, organization_id, project_id } = req.body;
+    const { user_id, organization_slug, project_ref } = req.body;
 
     posthog.identify({
         distinctId: user_id,
@@ -53,22 +53,22 @@ app.post('/telemetry/identify', (req, res) => {
         distinctId: user_id,
         alias: anonymous_id,
     })
-    if(!!organization_id){
+    if(!!organization_slug){
       posthog.groupIdentify({
         distinctId: user_id,
         groupType: 'organization',
-        groupKey: organization_id,
+        groupKey: organization_slug,
       })
-      res.cookie('organization_id', organization_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+      res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
-    if(!!project_id){
+    if(!!project_ref){
       posthog.groupIdentify({
         distinctId: user_id,
         groupType: 'project',
-        groupKey: project_id,
+        groupKey: project_ref,
       })
-      res.cookie('project_id', project_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+      res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
 
     res.status(200).send('Identified');
@@ -76,41 +76,41 @@ app.post('/telemetry/identify', (req, res) => {
 
 app.post('/telemetry/reset', (req, res) => {
   res.clearCookie('user_id');
-  res.clearCookie('organization_id');
-  res.clearCookie('project_id');
+  res.clearCookie('organization_slug');
+  res.clearCookie('project_ref');
   res.clearCookie('anonymous_id');
   res.clearCookie('session_id');
   res.status(200).send('Reset');
 })
 
 app.post('/telemetry/groups/identify', (req, res) => {
-  const { organization_id, project_id } = req.body;
+  const { organization_slug, project_ref } = req.body;
 
   const user_id = req.cookies.user_id;
   if(!user_id) return;
 
-  if(!!organization_id) {
+  if(!!organization_slug) {
     posthog.groupIdentify({
       distinctId: user_id,
       groupType: 'organization',
-      groupKey: organization_id,
+      groupKey: organization_slug,
     });
-    res.cookie('organization_id', organization_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+    res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   }
-  if(!!project_id) {
+  if(!!project_ref) {
     posthog.groupIdentify({
       distinctId: user_id,
       groupType: 'project',
-      groupKey: project_id,
+      groupKey: project_ref,
     });
-    res.cookie('project_id', project_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+    res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   }
 })
 
 app.post('/telemetry/groups/reset', (req, res) => {
-  const { resetOrganization, resetProject } = req.body;
-  if(resetOrganization) res.clearCookie('organization_id');
-  if(resetProject) res.clearCookie('project_id');
+  const { reset_organization, reset_project } = req.body;
+  if(reset_organization) res.clearCookie('organization_slug');
+  if(reset_project) res.clearCookie('project_ref');
   res.status(200).send('Groups reset');
 })
 
@@ -118,8 +118,8 @@ app.post('/telemetry/event', (req, res) => {
   const { action, page_url, page_title, pathname, ph, custom_properties } = req.body;
   const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-  const { organization_id, project_id, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
-  const visitProperties = getVisitInfo({ userAgent: ph.user_agent, referrer: ph.referrer, search: ph.search });
+  const { organization_slug, project_ref, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
+  const visitProperties = getVisitInfo(ph);
 
   posthog.capture({
     distinctId: user_id ?? anonymous_id,
@@ -132,12 +132,11 @@ app.post('/telemetry/event', (req, res) => {
         $host: new URL(page_url).hostname,
         $process_person_profile: !!user_id,
         $session_id: session_id,
-        $locale: ph.language,
         ...visitProperties,
         ...custom_properties
     },
-    ...(!!organization_id && {
-      groups: { organization: organization_id, ...!!project_id && { project: project_id }}
+    ...(!!organization_slug && {
+      groups: { organization: organization_slug, ...!!project_ref && { project: project_ref }}
     }),
     sendFeatureFlags: true, // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });
@@ -146,8 +145,8 @@ app.post('/telemetry/event', (req, res) => {
   res.cookie('anonymous_id', anonymous_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
 
   if(user_id) res.cookie('user_id', user_id, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
-  if(organization_id) res.cookie('organization_id', organization_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
-  if(project_id) res.cookie('project_id', project_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+  if(organization_slug) res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+  if(project_ref) res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
 
   res.status(200).send('Event tracked');
 });
@@ -166,9 +165,9 @@ app.post('/telemetry/page', (req, res)=> {
    */
   const hasActiveSession = !!req.cookies.session_id;
 
-  const { organization_id, project_id, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
+  const { organization_slug, project_ref, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
 
-  const visitProperties = getVisitInfo({userAgent: ph.user_agent, referrer: ph.referrer, search: ph.search}, { isInitialSession });
+  const visitProperties = getVisitInfo(ph, { isInitialSession });
 
   posthog.capture({
     distinctId: user_id ?? anonymous_id,
@@ -181,7 +180,6 @@ app.post('/telemetry/page', (req, res)=> {
         $host: new URL(page_url).hostname,
         $process_person_profile: !!user_id,
         $session_id: session_id,
-        $locale: ph.language,
         ...visitProperties,
         ...(!hasActiveSession && {
           $entry_current_url: page_url,
@@ -195,8 +193,8 @@ app.post('/telemetry/page', (req, res)=> {
           $entry_referring_domain: visitProperties.$referring_domain,
         })
     },
-    ...(!!organization_id && {
-      groups: { organization: organization_id, ...!!project_id && { project: project_id }}
+    ...(!!organization_slug && {
+      groups: { organization: organization_slug, ...!!project_ref && { project: project_ref }}
     }),
     sendFeatureFlags: true // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });
@@ -205,8 +203,8 @@ app.post('/telemetry/page', (req, res)=> {
   res.cookie('anonymous_id', anonymous_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   
   if(user_id) res.cookie('user_id', user_id, { httpOnly: true, maxAge: THIRTY_MIN_IN_MS, sameSite: 'lax' });
-  if(organization_id) res.cookie('organization_id', organization_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
-  if(project_id) res.cookie('project_id', project_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+  if(organization_slug) res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
+  if(project_ref) res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
 
   res.status(200).send('Page view tracked');
 })
@@ -214,7 +212,7 @@ app.post('/telemetry/page', (req, res)=> {
 app.post('/telemetry/pageleave', (req, res) => {
   const { page_url, page_title, pathname } = req.body;
   const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  const { organization_id, project_id, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
+  const { organization_slug, project_ref, user_id, anonymous_id, session_id } = getIdsFromCookies(req.cookies);
 
   posthog.capture({
     distinctId: user_id ?? anonymous_id,
@@ -230,8 +228,8 @@ app.post('/telemetry/pageleave', (req, res) => {
         $session_id: session_id,
         $ip,
     },
-    ...(!!organization_id && {
-      groups: { organization: organization_id, ...!!project_id && { project: project_id }}
+    ...(!!organization_slug && {
+      groups: { organization: organization_slug, ...!!project_ref && { project: project_ref }}
     }),
     sendFeatureFlags: true, // For future adoption - we want to send feature flags with every event so that we can use them in event analysis in PostHog.
   });

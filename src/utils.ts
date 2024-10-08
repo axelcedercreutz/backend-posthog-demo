@@ -23,15 +23,15 @@ const removeUndefinedValues = <T extends object>(obj: T): T =>
  * {@link https://posthog.com/docs/data/sessions#custom-session-ids | PostHog Documentation}
  */
 export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
-    organization_id: string | undefined,
-    project_id: string | undefined,
+    organization_slug: string | undefined,
+    project_ref: string | undefined,
     user_id: string | undefined,
     anonymous_id: string,
     session_id: string,
 } => {
     return {
-        organization_id: cookies.organizationId,
-        project_id: cookies.projectId,
+        organization_slug: cookies.organizationId,
+        project_ref: cookies.projectId,
         user_id: cookies.userId,
         anonymous_id: cookies.anonymousId ?? uuidv7(),
         session_id: cookies.sessionId ?? uuidv7(),
@@ -206,7 +206,8 @@ const getReferrerInfo = (referrer: string) => {
  * @param {boolean} [opts.isInitialSession] - Indicates if this is the initial session.
  * @returns {Object} An object containing the visit information, including browser, referrer, device, OS, and UTM tags.
  */
-export const getVisitInfo = ({userAgent, search, referrer}: {userAgent: string, search: string, referrer: string}, opts?: {isInitialSession: boolean}) => {
+export const getVisitInfo = (ph : {userAgent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number}, opts?: {isInitialSession: boolean}) => {
+    const { userAgent, search, referrer } = ph;
     const browserInfo = getBrowserInfo(userAgent);
     const referrerInfo = getReferrerInfo(referrer);
     const deviceInfo = getDeviceAndOS(userAgent);
@@ -221,6 +222,9 @@ export const getVisitInfo = ({userAgent, search, referrer}: {userAgent: string, 
         $device_type: deviceInfo.deviceType,
         $os: deviceInfo.os,
         $os_version: deviceInfo.osVersion,
+        $locale: ph.language,
+        $viewport_height: ph.viewport_height,
+        $viewport_width: ph.viewport_width,
         ...utmTags,
     });
 }
