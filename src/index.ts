@@ -212,7 +212,7 @@ app.post('/telemetry/page', (req, res)=> {
 })
 
 app.post('/telemetry/pageleave', (req, res) => {
-  const event = req.body;
+  const { pageUrl, pageTitle, pathname } = req.body;
   const $ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const { organizationId, projectId, userId, anonymousId, sessionId } = getIdsFromCookies(req.cookies);
 
@@ -220,11 +220,12 @@ app.post('/telemetry/pageleave', (req, res) => {
     distinctId: userId ?? anonymousId,
     event: '$pageleave',
     properties: {
-        $current_url: event.current_url,
-        $host: new URL(event.current_url).hostname,
-        $pathname: event.route,
-        $exit_current_url: event.current_url,
-        $exit_pathname: event.route,
+        page_title: pageTitle,
+        $current_url: pageUrl,
+        $host: new URL(pageUrl).hostname,
+        $pathname: pathname,
+        $exit_current_url: pageUrl,
+        $exit_pathname: pathname,
         $process_person_profile: !!userId,
         $session_id: sessionId,
         $ip,
