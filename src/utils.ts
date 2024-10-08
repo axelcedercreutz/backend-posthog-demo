@@ -1,28 +1,34 @@
 import { isNull, isObject, isUndefined, transform } from 'lodash';
 import { v7 as uuidv7 } from 'uuid';
 
-const removeUndefinedValues = <T extends object>(obj: T): T =>
-	transform(obj, (r, v, k) => {
-		if (isUndefined(v) || isNull(v)) return;
-		r[k] = isObject(v) ? removeUndefinedValues(v) : v;
-	});
+/**
+ * Removes undefined and null values from an object.
+ *
+ * @template T - The type of the object.
+ * @param {T} obj - The object to remove undefined and null values from.
+ * @returns {T} A new object with undefined and null values removed.
+ */
+const removeUndefinedValues = <T extends object>(obj: T): T => transform(obj, (r, v, k) => {
+    if (isUndefined(v) || isNull(v)) return;
+    r[k] = isObject(v) ? removeUndefinedValues(v) : v;
+});
 
 /**
  * Extracts various IDs from the provided cookies object.
  *
- * @param cookies - An object containing cookie key-value pairs.
- * @returns An object containing the following IDs:
- * - `organizationId`: The organization ID, if present in the cookies.
- * - `projectId`: The project ID, if present in the cookies.
- * - `userId`: The user ID, if present in the cookies.
- * - `anonymousId`: A UUIDv7 anonymous ID, generated if not present in the cookies.
- * - `sessionId`: A UUIDv7 session ID, generated if not present in the cookies.
+ * @param {Object.<string, string>} cookies - An object containing cookie key-value pairs.
+ * @returns {Object} An object containing the following IDs:
+ * - `organization_slug`: The organization ID, if present in the cookies.
+ * - `project_ref`: The project ID, if present in the cookies.
+ * - `user_id`: The user ID, if present in the cookies.
+ * - `anonymous_id`: A UUIDv7 anonymous ID, generated if not present in the cookies.
+ * - `session_id`: A UUIDv7 session ID, generated if not present in the cookies.
  *
  * @remarks
  * For PostHog to recognize the session ID, it must be a UUIDv7. See
  * {@link https://posthog.com/docs/data/sessions#custom-session-ids | PostHog Documentation}
  */
-export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
+export const getIdsFromCookies = (cookies: { [key: string]: string }): {
     organization_slug: string | undefined,
     project_ref: string | undefined,
     user_id: string | undefined,
@@ -41,8 +47,8 @@ export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
 /**
  * Extracts browser information from a user agent string.
  *
- * @param userAgent - The raw user agent string to parse.
- * @returns An object containing the browser name and version, if detected.
+ * @param {string} userAgent - The raw user agent string to parse.
+ * @returns {Object} An object containing the browser name and version, if detected.
  *
  * @example
  * ```typescript
@@ -51,8 +57,8 @@ export const  getIdsFromCookies = (cookies: {[key: string]: string}): {
  * ```
  */
 const getBrowserInfo = (userAgent: string) => {
-    let browser:string | undefined;
-    let version:string | undefined;
+    let browser: string | undefined;
+    let version: string | undefined;
 
     if (userAgent.includes("Chrome")) {
         browser = "Chrome";
@@ -79,8 +85,8 @@ const getBrowserInfo = (userAgent: string) => {
 /**
  * Extracts device type, operating system, and OS version from a user agent string.
  *
- * @param userAgent - The raw user agent string to parse.
- * @returns An object containing the device type, operating system, and OS version.
+ * @param {string} userAgent - The raw user agent string to parse.
+ * @returns {Object} An object containing the device type, operating system, and OS version.
  * 
  * @example
  * ```typescript
@@ -90,10 +96,10 @@ const getBrowserInfo = (userAgent: string) => {
  * ```
  */
 const getDeviceAndOS = (userAgent: string) => {
-    let deviceType:string | undefined;
-    let os:string | undefined;
-    let osVersion:string | undefined;
-    
+    let deviceType: string | undefined;
+    let os: string | undefined;
+    let osVersion: string | undefined;
+
     if (/mobile/i.test(userAgent)) {
         deviceType = "Mobile";
     } else if (/tablet/i.test(userAgent)) {
@@ -102,7 +108,6 @@ const getDeviceAndOS = (userAgent: string) => {
         deviceType = "Desktop";
     }
 
-    
     if (userAgent.includes("Win")) {
         os = "Windows";
         osVersion = userAgent.match(/Windows NT (\d+\.\d+)/)?.[1];
@@ -122,13 +127,12 @@ const getDeviceAndOS = (userAgent: string) => {
     return { deviceType, os, osVersion };
 }
 
-
 /**
  * Extracts UTM tags from a URL search string.
  *
  * @param {string} search - The URL search string containing UTM parameters.
  * @param {boolean} [isInitialSession] - Optional flag indicating if this is the initial session.
- * @returns {object} An object containing the extracted UTM tags. If `isInitialSession` is true,
+ * @returns {Object} An object containing the extracted UTM tags. If `isInitialSession` is true,
  *                   additional initial UTM tags are included with default values set to 'organic'.
  *
  * @example
@@ -185,8 +189,7 @@ const getUTMTags = (search: string, isInitialSession?: boolean) => {
  * Extracts referrer information from a given URL string.
  *
  * @param {string} referrer - The URL string of the referrer.
- * @returns {{ referrer: string | undefined, referringDomain: string | undefined }} 
- * An object containing the original referrer URL and the referring domain.
+ * @returns {Object} An object containing the original referrer URL and the referring domain.
  * - `referrer`: The original referrer URL if provided, otherwise `undefined`.
  * - `referringDomain`: The hostname of the referrer URL if provided, otherwise `undefined`.
  */
@@ -198,15 +201,18 @@ const getReferrerInfo = (referrer: string) => {
 /**
  * Retrieves visit information based on user agent, search parameters, and referrer.
  *
- * @param {Object} params - The parameters for the visit.
- * @param {string} params.userAgent - The user agent string from the visitor's browser.
- * @param {string} params.search - The search query string from the URL.
- * @param {string} params.referrer - The referrer URL.
+ * @param {Object} ph - The parameters for the visit.
+ * @param {string} ph.userAgent - The user agent string from the visitor's browser.
+ * @param {string} ph.search - The search query string from the URL.
+ * @param {string} ph.referrer - The referrer URL.
+ * @param {string} ph.language - The language setting of the visitor's browser.
+ * @param {number} ph.viewport_height - The height of the visitor's viewport.
+ * @param {number} ph.viewport_width - The width of the visitor's viewport.
  * @param {Object} [opts] - Optional parameters.
  * @param {boolean} [opts.isInitialSession] - Indicates if this is the initial session.
  * @returns {Object} An object containing the visit information, including browser, referrer, device, OS, and UTM tags.
  */
-export const getVisitInfo = (ph : {userAgent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number}, opts?: {isInitialSession: boolean}) => {
+export const getVisitInfo = (ph: { userAgent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number }, opts?: { isInitialSession: boolean }) => {
     const { userAgent, search, referrer } = ph;
     const browserInfo = getBrowserInfo(userAgent);
     const referrerInfo = getReferrerInfo(referrer);
