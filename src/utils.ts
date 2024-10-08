@@ -59,7 +59,7 @@ export const getIdsFromCookies = (cookies: { [key: string]: string }): {
 const getBrowserInfo = (userAgent: string) => {
     let browser: string | undefined;
     let version: string | undefined;
-
+    console.log('userAgent', userAgent)
     if (userAgent.includes("Chrome")) {
         browser = "Chrome";
         version = userAgent.match(/Chrome\/(\d+)/)?.[1];
@@ -202,7 +202,7 @@ const getReferrerInfo = (referrer: string) => {
  * Retrieves visit information based on user agent, search parameters, and referrer.
  *
  * @param {Object} ph - The parameters for the visit.
- * @param {string} ph.userAgent - The user agent string from the visitor's browser.
+ * @param {string} ph.user_agent - The user agent string from the visitor's browser.
  * @param {string} ph.search - The search query string from the URL.
  * @param {string} ph.referrer - The referrer URL.
  * @param {string} ph.language - The language setting of the visitor's browser.
@@ -212,15 +212,16 @@ const getReferrerInfo = (referrer: string) => {
  * @param {boolean} [opts.isInitialSession] - Indicates if this is the initial session.
  * @returns {Object} An object containing the visit information, including browser, referrer, device, OS, and UTM tags.
  */
-export const getVisitInfo = (ph: { userAgent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number }, opts?: { isInitialSession: boolean }) => {
-    const { userAgent, search, referrer } = ph;
-    const browserInfo = getBrowserInfo(userAgent);
+export const getVisitInfo = (ph: { user_agent: string, search: string, referrer: string, language: string, viewport_height: number, viewport_width: number }, opts?: { isInitialSession: boolean }) => {
+    const { user_agent, search, referrer } = ph;
+    console.log('ph', ph)
+    const browserInfo = getBrowserInfo(user_agent);
     const referrerInfo = getReferrerInfo(referrer);
-    const deviceInfo = getDeviceAndOS(userAgent);
+    const deviceInfo = getDeviceAndOS(user_agent);
     const utmTags = getUTMTags(search, opts?.isInitialSession);
 
     return removeUndefinedValues({
-        $raw_user_agent: userAgent,
+        $raw_user_agent: user_agent,
         $browser: browserInfo.browser,
         $browser_version: browserInfo.version,
         $referrer: referrerInfo.referrer,
