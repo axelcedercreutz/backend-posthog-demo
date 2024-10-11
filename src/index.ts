@@ -39,6 +39,14 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+app.get('/telemetry/feature-flags', async (req, res) => {
+  const { user_id, anonymous_id,  organization_slug, project_ref } = getIdsFromCookies(req.cookies);
+  const flagsWithPayloads = await posthog.getAllFlagsAndPayloads(user_id ?? anonymous_id, {
+    groups: { ...!!organization_slug && {organization: organization_slug}, ...!!project_ref && { project: project_ref }}
+  });
+  res.json(flagsWithPayloads);
+})
+
 app.post('/telemetry/identify', (req, res) => {
     const { user_id, organization_slug, project_ref } = req.body;
 
