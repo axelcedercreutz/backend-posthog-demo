@@ -36,8 +36,8 @@ export const getIdsFromCookies = (cookies: { [key: string]: string }): {
     session_id: string,
 } => {
     return {
-        organization_slug: cookies.organization_id,
-        project_ref: cookies.project_id,
+        organization_slug: cookies.organization_slug,
+        project_ref: cookies.project_ref,
         user_id: cookies.user_id,
         anonymous_id: cookies.anonymous_id ?? uuidv7(),
         session_id: cookies.session_id ?? uuidv7(),

@@ -44,6 +44,9 @@ app.post('/telemetry/identify', (req, res) => {
 
     posthog.identify({
         distinctId: user_id,
+        properties: {
+          gotrueId: user_id,
+        }
     });
     res.cookie('user_id', user_id, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     
@@ -58,6 +61,9 @@ app.post('/telemetry/identify', (req, res) => {
         distinctId: user_id,
         groupType: 'organization',
         groupKey: organization_slug,
+        properties: {
+          organizationSlug: organization_slug
+        }
       })
       res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
@@ -67,6 +73,9 @@ app.post('/telemetry/identify', (req, res) => {
         distinctId: user_id,
         groupType: 'project',
         groupKey: project_ref,
+        properties: {
+          projectRef: project_ref
+        }
       })
       res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
     }
@@ -94,6 +103,9 @@ app.post('/telemetry/groups/identify', (req, res) => {
       distinctId: user_id,
       groupType: 'organization',
       groupKey: organization_slug,
+      properties: {
+        organizationSlug: organization_slug
+      }
     });
     res.cookie('organization_slug', organization_slug, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   }
@@ -102,6 +114,9 @@ app.post('/telemetry/groups/identify', (req, res) => {
       distinctId: user_id,
       groupType: 'project',
       groupKey: project_ref,
+      properties: {
+        projectRef: project_ref
+      }
     });
     res.cookie('project_ref', project_ref, { httpOnly: true, maxAge: YEAR_IN_MS, sameSite: 'lax' });
   }
