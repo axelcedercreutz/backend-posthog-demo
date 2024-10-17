@@ -17,7 +17,9 @@ const THIRTY_MIN_IN_MS = 3600000 / 2;
 
 const posthog = new PostHog(process.env.PH_API_KEY ?? '', {
   host: process.env.PH_HOST,
-  disableGeoip: false // Events that are generated on the server-side must override this to true.
+  personalApiKey: process.env.PH_PERSONAL_API_KEY,
+  featureFlagsPollingInterval: 3000,
+  disableGeoip: false
 });
 
 posthog.debug()
@@ -42,6 +44,7 @@ app.use(cookieParser());
 app.get('/telemetry/feature-flags', async (req, res) => {
   const { user_id, anonymous_id,  organization_slug, project_ref } = getIdsFromCookies(req.cookies);
   const flagsWithPayloads = await posthog.getAllFlagsAndPayloads(user_id ?? anonymous_id, {
+    ...(user_id && { personProperties: { gotrueId: user_id }}),
     groups: { ...!!organization_slug && {organization: organization_slug}, ...!!project_ref && { project: project_ref }}
   });
   res.json(flagsWithPayloads);
