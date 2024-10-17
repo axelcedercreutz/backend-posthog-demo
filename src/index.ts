@@ -50,6 +50,18 @@ app.get('/telemetry/feature-flags', async (req, res) => {
   res.json(flagsWithPayloads);
 })
 
+app.post('/telemetry/feature-flags/track', async (req, res) => {
+  const { user_id, anonymous_id, organization_slug, project_ref } = getIdsFromCookies(req.cookies);
+  const { feature_flag_key, feature_flag_value } = req.body;
+  posthog.capture({
+    event: '$feature_flag_called',
+    distinctId: user_id ?? anonymous_id, 
+    groups: { ...!!organization_slug && {organization: organization_slug}, ...!!project_ref && { project: project_ref }},
+    sendFeatureFlags: true,
+  });
+  res.status(200).send('Feature flag tracked');
+})
+
 app.post('/telemetry/identify', (req, res) => {
     const { user_id, organization_slug, project_ref } = req.body;
 
